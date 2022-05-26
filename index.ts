@@ -62,10 +62,12 @@ game.subscribeToEvent("playerChats", (data, _context) => {
 		if (admins.has(message.senderId)) {
 			if (message.contents.toLowerCase().startsWith("roles:")) {
 				setRoles(message.contents);
+				return;
 			}
 			switch (message.contents.toLowerCase()) {
 				case "play":
 					sendRoles(message.recipient);
+					break;
 				default:
 					let reply = "what? try sending play or \"roles: A,B,C,D...\". Or up/down/left/right/dance for fun.";
 					game.chat(message.senderId, [], "", reply);
