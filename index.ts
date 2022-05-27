@@ -15,15 +15,16 @@ export const ADMIN_ID = "myplayerid";
 export const PASSWORD = "mypassword";
 */
 
+// You can set the default roles here, or send them via "roles: A,B,C..." DM.
+var cards = [
+	"Killer", "Killer", "President", "Assassin", "Hunter", "Gatherer"
+];
+
 // setup
 
 const game = new Game(() => Promise.resolve({ apiKey: API_KEY }));
 game.connect(SPACE_ID); // replace with your spaceId of choice
 game.subscribeToConnection((connected) => console.log("connected?", connected));
-
-var cards = [
-	"Killer", "Killer", "President", "Assassin", "Hunter", "Gatherer"
-];
 
 var admins = new Set();
 var myId;
