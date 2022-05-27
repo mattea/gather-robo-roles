@@ -1,4 +1,4 @@
-import { API_KEY, SPACE_ID, ADMIN_ID, PASSWORD } from "./api-key";
+import { API_KEY, SPACE_ID, ADMIN_ID, PASSWORD } from "./config";
 import { Game, MoveDirection } from "@gathertown/gather-game-client";
 global.WebSocket = require("isomorphic-ws");
 
