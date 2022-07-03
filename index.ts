@@ -26,9 +26,10 @@ const game = new Game(() => Promise.resolve({ apiKey: API_KEY }));
 game.connect(SPACE_ID); // replace with your spaceId of choice
 game.subscribeToConnection((connected) => console.log("connected?", connected));
 
-var admins = new Set();
+var admins = new Set<string>();
 var myId;
 admins.add(ADMIN_ID);
+var players = new Set<string>();
 
 function shuffleArray(array: any[]) {
 	for (let i = array.length - 1; i > 0; i--) {
@@ -37,12 +38,99 @@ function shuffleArray(array: any[]) {
 	}
 }
 
+function addPlayers(playerNames: Set<string>) {
+  var reply = new Array<string>();
+	var addedPlayers = new Array<string>();
+	var alreadyPlaying = new Array<string>();
+	console.log("Adding players: ", playerNames);
+	Object.keys(game.players).forEach((playerId) => {
+		const playerName = game.players[playerId].name;
+		console.log(`Checking ${playerName}.`);
+		if (playerNames.has(playerName.trim())) {
+			console.log(`Found ${playerName}.`);
+			if (players.has(playerId)) {
+				alreadyPlaying.push(playerName);
+			} else {
+				console.log(`Added ${playerName}.`);
+				players.add(playerId);
+				addedPlayers.push(playerName);
+			}
+		}
+	});
+	if (addedPlayers.length > 0) {
+		reply.push("Added: " + addedPlayers.join(", "));
+	}
+	if (alreadyPlaying.length > 0) {
+		reply.push(" Player(s) already playing: " + alreadyPlaying.join(", "));
+	}
+	if (reply.length > 0) {
+		return reply.join(". ");
+	} else {
+		return "No players found";
+	}
+}
+
+function removePlayers(playerNames: Set<string>) {
+  var reply = new Array<string>();
+	var removedPlayers = new Array<string>();
+	var notPlaying = new Array<string>();
+	Object.keys(game.players).forEach((playerId) => {
+		const playerName = game.players[playerId].name;
+		if (playerNames.has(playerName.trim())) {
+			if (players.has(playerId)) {
+				players.delete(playerId);
+				removedPlayers.push(playerName);
+			} else {
+				notPlaying.push(playerName);
+			}
+		}
+	});
+	if (removedPlayers.length > 0) {
+		reply.push("Removed: " + removedPlayers.join(", "));
+	}
+	if (notPlaying.length > 0) {
+		reply.push(" Player(s) not playing: " + notPlaying.join(", "));
+	}
+	if (reply.length > 0) {
+		return reply.join(". ");
+	} else {
+		return "No players found";
+	}
+}
+
+function getPlayerNames(myId: string, recipient: string) {
+	var playerNames = new Array<string>();
+	// Object.keys(game.players).forEach((playerId) => {
+	players.forEach((playerId) => {
+		if (playerId == myId) return;
+		if (!(playerId in game.players)) {
+			admins.forEach((adminId) => {
+				game.chat(recipient, [], "", "An expected player is missing, skipping...");
+			});
+			return;
+		}
+		playerNames.push(game.players[playerId].name);
+	});
+	return "Player List: " + playerNames.join(", ");
+}
+
+function strToList(str: string) {
+	return str.split(',').map((e) => e.trim());
+}
+
 function sendRoles(myId: string) {
 	shuffleArray(cards);
 	var pIdx = 0;
-	Object.keys(game.players).forEach((playerId) => {
+	// Object.keys(game.players).forEach((playerId) => {
+	players.forEach((playerId) => {
 		if (playerId == myId) return;
-		game.chat(playerId, [], "", cards[pIdx]);
+		if (!(playerId in game.players)) {
+			admins.forEach((adminId) => {
+				game.chat(adminId, [], "", "An expected player is missing, skipping...");
+			});
+			return;
+		}
+		game.chat(playerId, [], "", "Here is your role! You are: " + cards[pIdx]);
 		pIdx++;
 	});
 }
@@ -58,48 +146,88 @@ game.subscribeToEvent("playerChats", (data, _context) => {
 	// console.log(data);
 	// console.log(_context);
 	const message = data.playerChats;
+	const senderId = message.senderId;
+	const myId = message.recipient;
+	let reply = "";
 	// console.log(message);
 	if (message.messageType === "DM") {
-		if (admins.has(message.senderId)) {
+		if (admins.has(senderId)) {
 			if (message.contents.toLowerCase().startsWith("roles:")) {
 				setRoles(message.contents);
-				return;
-			}
-			switch (message.contents.toLowerCase()) {
-				case "play":
-					sendRoles(message.recipient);
-					break;
-				default:
-					let reply = "what? try sending play or \"roles: A,B,C,D...\". Or up/down/left/right/dance for fun.";
-					game.chat(message.senderId, [], "", reply);
-			}
-			return;
-		}
-		switch (message.contents.toLowerCase()) {
-			case "up":
-				game.move(MoveDirection.Up);
-				break;
-			case "down":
-				game.move(MoveDirection.Down);
-				break;
-			case "left":
-				game.move(MoveDirection.Left);
-				break;
-			case "right":
-				game.move(MoveDirection.Right);
-				break;
-			case "dance":
-				game.move(MoveDirection.Dance);
-				break;
-			case PASSWORD:
-				admins.add(message.senderId);
-				break;
-			default:
-				let reply = "what? try sending up/down/left/right";
-				if (message.contents.substring(0, 3).toLowerCase() === "how") {
-					reply = "https://github.com/gathertown/twitch-plays-gather";
+			  reply = "Roles set!";
+			} else if (message.contents.toLowerCase().startsWith("add:")) {
+				reply = addPlayers(new Set(strToList(message.contents.split(':')[1])));
+			} else if (message.contents.toLowerCase().startsWith("remove:")) {
+				reply = removePlayers(new Set(strToList(message.contents.split(':')[1])));
+			} else {
+				switch (message.contents.toLowerCase()) {
+		  		case PASSWORD:
+		  			reply = "You're already an admin.";
+		  			break;
+					case "play":
+				  	reply = "Sending out roles!";
+						sendRoles(myId);
+						break;
+					case "count":
+						reply = "There are " + players.size + " players.";
+						break;
+					case "players":
+						reply = getPlayerNames(myId, senderId);
+						break;
+					case "reset":
+						players.clear();
+						reply = "Player list cleared";
+						break;
+				  case "up":
+				  	game.move(MoveDirection.Up);
+				  	break;
+				  case "down":
+				  	game.move(MoveDirection.Down);
+				  	break;
+				  case "left":
+				  	game.move(MoveDirection.Left);
+				  	break;
+				  case "right":
+				  	game.move(MoveDirection.Right);
+				  	break;
+				  case "dance":
+				  	game.move(MoveDirection.Dance);
+				  	break;
+				  case "join":
+				  	players.add(senderId);
+				  	reply = "Welcome to the game! I'll send you a role when it's time to start.";
+				  	break;
+				  case "leave":
+				  	players.delete(senderId);
+				  	reply = "Thanks for playing!";
+				  	break;
+					default:
+						reply = "what? try sending play/count/players/reset, 'roles: A,B,C,D...', 'add: PlayerName', or 'remove: PlayerName'. Or up/down/left/right/dance for fun.";
 				}
-				game.chat(message.senderId, [], "", reply);
+			}
+		} else {
+		  switch (message.contents.toLowerCase()) {
+		  	case PASSWORD:
+		  		admins.add(senderId);
+		  		reply = "Welcome admin!";
+		  		break;
+		  	case "join":
+		  		players.add(senderId);
+		  		reply = "Welcome to the game! I'll send you a role when it's time to start.";
+		  		break;
+		  	case "leave":
+		  		players.delete(senderId);
+		  		reply = "Thanks for playing!";
+		  		break;
+		  	default:
+		  		reply = "What? Send 'join' to play or 'leave' to stop playing.";
+		  		if (message.contents.substring(0, 3).toLowerCase() === "how") {
+		  			reply = "https://github.com/gathertown/twitch-plays-gather";
+		  		}
+		  }
+		}
+		if (reply != "") {
+			game.chat(senderId, [], "", reply);
 		}
 	}
 });
@@ -116,7 +244,7 @@ setTimeout(() => {
 	game.engine.sendAction({
 		$case: "setTextStatus",
 		setTextStatus: {
-			textStatus: "DM me to move!",
+			textStatus: "DM me to play!",
 		},
 	});
 }, 2000); // wait two seconds before setting these just to give the game a chance to init
