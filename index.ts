@@ -45,9 +45,7 @@ function addPlayers(playerNames: Set<string>) {
 	console.log("Adding players: ", playerNames);
 	Object.keys(game.players).forEach((playerId) => {
 		const playerName = game.players[playerId].name;
-		console.log(`Checking ${playerName}.`);
 		if (playerNames.has(playerName.trim())) {
-			console.log(`Found ${playerName}.`);
 			if (players.has(playerId)) {
 				alreadyPlaying.push(playerName);
 			} else {
