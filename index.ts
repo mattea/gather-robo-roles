@@ -145,6 +145,7 @@ game.subscribeToEvent("playerChats", (data, _context) => {
 	// console.log(_context);
 	const message = data.playerChats;
 	const senderId = message.senderId;
+	const sender = game.players[senderId];
 	const myId = message.recipient;
 	let reply = "";
 	// console.log(message);
@@ -176,6 +177,9 @@ game.subscribeToEvent("playerChats", (data, _context) => {
 						players.clear();
 						reply = "Player list cleared";
 						break;
+				  case "come":
+				  	game.teleport(sender.map, sender.x, sender.y);
+				  	break;
 				  case "up":
 				  	game.move(MoveDirection.Up);
 				  	break;
@@ -200,7 +204,7 @@ game.subscribeToEvent("playerChats", (data, _context) => {
 				  	reply = "Thanks for playing!";
 				  	break;
 					default:
-						reply = "what? try sending play/count/players/reset, 'roles: A,B,C,D...', 'add: PlayerName', or 'remove: PlayerName'. Or up/down/left/right/dance for fun.";
+						reply = "what? try sending play/count/players/reset/come/join/leave, 'roles: A,B,C,D...', 'add: PlayerName', or 'remove: PlayerName'. Or up/down/left/right/dance for fun.";
 				}
 			}
 		} else {
